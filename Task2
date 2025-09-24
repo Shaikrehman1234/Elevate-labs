@@ -1,0 +1,82 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load dataset
+df = pd.read_csv("Superstore.csv", encoding='latin1')
+
+# --- 1. Executive Overview ---
+# KPIs
+total_sales = df['Sales'].sum()
+total_profit = df['Profit'].sum()
+total_orders = df['Order ID'].nunique()
+avg_discount = df['Discount'].mean()
+
+print("Total Sales:", total_sales)
+print("Total Profit:", total_profit)
+print("Total Orders:", total_orders)
+print("Avg Discount:", round(avg_discount, 2))
+
+# Sales & Profit Trend
+df['Order Date'] = pd.to_datetime(df['Order Date'])
+monthly = df.groupby(df['Order Date'].dt.to_period("M"))[['Sales','Profit']].sum().reset_index()
+monthly['Order Date'] = monthly['Order Date'].dt.to_timestamp()
+
+plt.figure(figsize=(12,6))
+sns.lineplot(data=monthly, x='Order Date', y='Sales', label='Sales')
+sns.lineplot(data=monthly, x='Order Date', y='Profit', label='Profit')
+plt.title("Monthly Sales & Profit Trend")
+plt.legend()
+plt.show()
+
+# --- 2. Sales by Category ---
+category_sales = df.groupby('Category')[['Sales','Profit']].sum().reset_index()
+
+plt.figure(figsize=(8,6))
+sns.barplot(data=category_sales, x='Category', y='Sales', color='skyblue', label='Sales')
+sns.barplot(data=category_sales, x='Category', y='Profit', color='orange', alpha=0.7, label='Profit')
+plt.title("Sales vs Profit by Category")
+plt.legend()
+plt.show()
+
+# --- 3. Regional Performance ---
+region_sales = df.groupby('Region')[['Sales','Profit']].sum().reset_index()
+
+plt.figure(figsize=(8,6))
+sns.barplot(data=region_sales, x='Region', y='Sales', hue='Region', dodge=False)
+plt.title("Sales by Region")
+plt.show()
+
+# --- 4. Customer Insights ---
+# Pareto Analysis
+customer_sales = df.groupby('Customer Name')['Sales'].sum().sort_values(ascending=False).reset_index()
+customer_sales['Cumulative %'] = customer_sales['Sales'].cumsum()/customer_sales['Sales'].sum()*100
+
+plt.figure(figsize=(12,6))
+sns.lineplot(data=customer_sales, x=range(len(customer_sales)), y='Cumulative %')
+plt.axhline(80, color='red', linestyle='--')
+plt.title("Pareto Analysis of Customers (80/20 rule)")
+plt.xlabel("Customers (sorted)")
+plt.ylabel("Cumulative % of Sales")
+plt.show()
+
+# Discount vs Profit
+plt.figure(figsize=(8,6))
+sns.scatterplot(data=df, x='Discount', y='Profit', alpha=0.5)
+plt.title("Discount % vs Profit")
+plt.show()
+
+# --- 5. Product-Level Performance ---
+product_sales = df.groupby('Product Name')[['Sales','Profit']].sum().reset_index()
+top_products = product_sales.sort_values('Sales', ascending=False).head(10)
+bottom_products = product_sales.sort_values('Profit').head(10)
+
+plt.figure(figsize=(12,6))
+sns.barplot(data=top_products, x='Sales', y='Product Name', color='blue')
+plt.title("Top 10 Products by Sales")
+plt.show()
+
+plt.figure(figsize=(12,6))
+sns.barplot(data=bottom_products, x='Profit', y='Product Name', color='red')
+plt.title("Bottom 10 Products by Profit")
+plt.show()
