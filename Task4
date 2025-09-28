@@ -1,0 +1,115 @@
+-- ============================================
+-- SQL for Data Analysis Project (E-commerce DB)
+-- ============================================
+
+-- Drop tables if they exist (for reruns)
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS customers;
+
+-- ========================
+-- 1. Schema Creation
+-- ========================
+CREATE TABLE customers (
+    customer_id INTEGER PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    email VARCHAR(100),
+    city VARCHAR(50),
+    country VARCHAR(50),
+    signup_date DATE
+);
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name VARCHAR(100),
+    category VARCHAR(50),
+    price DECIMAL(10,2)
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    customer_id INTEGER,
+    order_date DATE,
+    total_amount DECIMAL(10,2),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+CREATE TABLE order_items (
+    item_id INTEGER PRIMARY KEY,
+    order_id INTEGER,
+    product_id INTEGER,
+    quantity INTEGER,
+    price DECIMAL(10,2),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- ========================
+-- 2. Insert Sample Data
+-- ========================
+INSERT INTO customers VALUES
+(1, 'John', 'Smith', 'john@example.com', 'New York', 'USA', '2021-01-10'),
+(2, 'Emma', 'Brown', 'emma@example.com', 'London', 'UK', '2021-02-14'),
+(3, 'Alex', 'Lee', 'alex@example.com', 'Toronto', 'Canada', '2021-03-05');
+
+INSERT INTO products VALUES
+(1, 'iPhone 14', 'Electronics', 999.00),
+(2, 'AirPods Pro', 'Electronics', 249.00),
+(3, 'Coffee Maker', 'Home', 120.00);
+
+INSERT INTO orders VALUES
+(1, 1, '2023-01-02', 1248.00),
+(2, 2, '2023-01-05', 120.00);
+
+INSERT INTO order_items VALUES
+(1, 1, 1, 1, 999.00),
+(2, 1, 2, 1, 249.00),
+(3, 2, 3, 1, 120.00);
+
+-- ========================
+-- 3. Analysis Queries
+-- ========================
+
+-- (A) Customers from USA
+SELECT customer_id, first_name, last_name, city, country, signup_date
+FROM customers
+WHERE country = 'USA'
+ORDER BY signup_date DESC;
+
+-- (B) Total sales by category
+SELECT p.category, SUM(oi.quantity * oi.price) AS total_sales
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+GROUP BY p.category
+ORDER BY total_sales DESC;
+
+-- (C) Orders with customer details
+SELECT o.order_id, c.first_name, c.last_name, o.order_date, o.total_amount
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.customer_id;
+
+-- (D) Customers and their orders (LEFT JOIN)
+SELECT c.first_name, c.last_name, o.order_id, o.order_date, o.total_amount
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id;
+
+-- (E) Customers above avg spend
+SELECT c.customer_id, c.first_name, c.last_name, SUM(o.total_amount) AS total_spent
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+HAVING SUM(o.total_amount) > (
+    SELECT AVG(total_amount) FROM orders
+);
+
+-- (F) Create a view for monthly sales summary
+CREATE VIEW monthly_sales AS
+SELECT strftime('%Y-%m', order_date) AS month, SUM(total_amount) AS total_sales
+FROM orders
+GROUP BY strftime('%Y-%m', order_date)
+ORDER BY month;
+
+-- (G) Optimization: Create index
+CREATE INDEX idx_orders_date ON orders(order_date);
