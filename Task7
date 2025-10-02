@@ -1,0 +1,57 @@
+import sqlite3
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Connect to database (creates if not exists)
+conn = sqlite3.connect("sales_data.db")
+cursor = conn.cursor()
+
+# Create table if not exists
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS sales (
+    sale_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    price REAL NOT NULL,
+    sale_date TEXT NOT NULL
+)
+""")
+
+# Insert some demo data (only if empty)
+cursor.execute("SELECT COUNT(*) FROM sales")
+if cursor.fetchone()[0] == 0:
+    data = [
+        ("Laptop", 2, 75000.0, "2025-10-01"),
+        ("Phone", 5, 30000.0, "2025-10-01"),
+        ("Tablet", 3, 20000.0, "2025-10-02"),
+        ("Laptop", 1, 75000.0, "2025-10-02"),
+        ("Phone", 4, 30000.0, "2025-10-03"),
+    ]
+    cursor.executemany(
+        "INSERT INTO sales (product_name, quantity, price, sale_date) VALUES (?, ?, ?, ?)",
+        data
+    )
+    conn.commit()
+
+# Run SQL query for summary
+query = """
+SELECT product_name AS product,
+       SUM(quantity) AS total_qty,
+       SUM(quantity * price) AS revenue
+FROM sales
+GROUP BY product_name
+"""
+df = pd.read_sql_query(query, conn)
+
+# Close connection
+conn.close()
+
+# Print results
+print("Sales Summary:")
+print(df)
+
+# Plot bar chart for revenue
+df.plot(kind="bar", x="product", y="revenue", legend=False, title="Revenue by Product")
+plt.ylabel("Revenue")
+plt.tight_layout()
+plt.show()
